@@ -1,3 +1,3 @@
 User-agent: *
 Disallow:
-Sitemap: https://markyang.github.io/sitemap.xml
+Sitemap: https://realmarkyang.github.io/sitemap.xml
