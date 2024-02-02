@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>DNS污染 | ✪ Mark Yang</title>
+<meta name="keywords" content="DNS">
+<meta name="description" content="DNS污染的原理和解决办法">
+<meta name="author" content="realMarkYang">
+<link rel="canonical" href="https://realmarkyang.github.io/posts/tech/dns%E6%B1%A1%E6%9F%93/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.js" onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://realmarkyang.github.io/img/Q.jpg">
+<link rel="icon" type="image/png" sizes="16x16" href="https://realmarkyang.github.io/img/Q.jpg">
+<link rel="icon" type="image/png" sizes="32x32" href="https://realmarkyang.github.io/img/Q.jpg">
+<link rel="apple-touch-icon" href="https://realmarkyang.github.io/img/Q.jpg">
+<link rel="mask-icon" href="https://realmarkyang.github.io/img/Q.jpg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+<script src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.3/dist/jquery.min.js"></script>
+
+
+
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = ""; 
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+<meta property="og:title" content="DNS污染" />
+<meta property="og:description" content="DNS污染的原理和解决办法" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://realmarkyang.github.io/posts/tech/dns%E6%B1%A1%E6%9F%93/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2024-02-02T19:55:23+08:00" />
+<meta property="article:modified_time" content="2024-02-02T19:55:23+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="DNS污染"/>
+<meta name="twitter:description" content="DNS污染的原理和解决办法"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+
+        {
+          "@type": "ListItem",
+          "position":  1 ,
+          "name": "📚文章",
+          "item": "https://realmarkyang.github.io/posts/"
+        },
+
+        {
+          "@type": "ListItem",
+          "position":  2 ,
+          "name": "👨🏻‍💻 技术",
+          "item": "https://realmarkyang.github.io/posts/tech/"
+        }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "DNS污染",
+      "item": "https://realmarkyang.github.io/posts/tech/dns%E6%B1%A1%E6%9F%93/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "DNS污染",
+  "name": "DNS污染",
+  "description": "DNS污染的原理和解决办法",
+  "keywords": [
+    "DNS"
+  ],
+  "articleBody": "DNS污染 今天按照惯例在查看Github上自己的仓库时，突然显示连接超时，随掏出手机发现手机竟可以正常访问（电脑连的上移动宽带，手机则是电信的）。脑中瞬间闪出一个想法——莫非是DNS污染？于是遂即查阅资料，予以一篇浅显的博客录之\n1.DNS污染的定义 DNS污染，又称为域名服务器缓存污染（DNScache pollution）或者域名服务器快照侵害（DNS cache poisoning）。DNS污染是指一些刻意制造或无意中制造出来的域名服务器分组，把域名指往不正确的IP地址。一般来说，网站在互联网上一般都有可信赖的域名服务器，但为减免网络上的交通，一般的域名都会把外间的域名服务器数据暂存起来，待下次有其他机器要求解析域名时，可以立即提供服务。一旦有相关网域的局域域名服务器的缓存受到污染，就会把网域内的电脑导引往错误的服务器或服务器的网址。其实总结起来用大白话说就是，通过DNS污染导致客户端收到错误的IP地址，从而无法正常访问目标网站。\n2.DNS污染的原理 首先我们来看一下电脑是如何访问目标网站的，如图1-DNS域名解析\n​ 图1-DNS域名解析\n本地客户机提出域名解析请求，查找本地HOST文件后将该请求发送给本地的域名服务器。\n将请求发送给本地的域名服务器。\n当本地的域名服务器收到请求后，就先查询本地的缓存。\n如果有该纪录项，则本地的域名服务器就直接把查询的结果返回浏览器。\n5. 如果本地DNS缓存中没有该纪录，则本地域名服务器就直接把请求发给根域名服务器。\n然后根域名服务器再返回给本地域名服务器一个所查询域（根的子域）的主域名服务器的地址。\n本地服务器再向上一步返回的域名服务器发送请求，然后接受请求的服务器查询自己的缓存，如果没有该纪录，则返回相关的下级的域名服务器的地址。\n重复第7步，直到找到正确的纪录。\n本地域名服务器把返回的结果保存到缓存，以备下一次使用，同时还将结果返回给客户机\n而DNS污染则是在第五步产生的，我们举一个浅显的例子\n假设A为用户端，B为DNS服务器，C为A到B链路的一个节点的网络设备（路由器，交换机，网关等等）。然后我们来模拟一次被污染的DNS请求过程。A向B构建UDP连接，然后，A向B发送查询请求，查询请求内容通常是：“github.com”，这一个数据包经过节点设备C继续前往DNS服务器B；然而在这个过程中，C通过对数据包进行特征分析（远程通讯端口为DNS服务器端口，激发内容关键字检查，检查特定的域名如上述的“github.com\",以及查询的记录类型\"A记录\"），从而立刻返回一个错误的解析结果（如返回了\"A 123.123.123.123\"），众所周知，作为链路上的一个节点，C机器的这个结果必定会先于真正的域名服务器的返回结果到达用户机器A(很多被污染的目标网站服务器都位于国外)，而目前我们的DNS解析机制有一个重要的原则，就是只认第一，因此C节点所返回的查询结果就被A机器当作了最终返回结果，用于构建链接。如图2-DNS污染原理。\n​ 图2-DNS污染原理\n3.检测DNS污染 由于DNS污染会返回一个虚假的IP地址，而当我们访问一个根本不存在的域名时，如果正常来说肯定不会有任何回答，然而当在域名被DNS污染后则会返回一个虚假的IP地址。这样我们就进行了一个简单的DNS污染检测。下面我将以一个简单的实验进行说明，为了方便理解，我先介绍一下用到的命令。\nnslookup#查询 DNS（域名系统）记录以解析 Internet 中的域名到相应的 IP 地址 ipconfig /flushdns#刷新DNS解析缓存 我们先选取一个不存在的国外IP作为域名服务器进行解析，然后用nslookup进行网络诊断\nC:\\\u003enslookup facebook.com 101.101.153.1 DNS request timed out. timeout was 2 seconds. Can't find server name for address 101.101.153.1: Timed out Server: UnKnown Address: 101.101.153.1 Name: twitter.com Address: 60.41.5.18 接着我们选取一个可正常访问的域名进行网络诊断\nC:\\\u003enslookup www.baidu.com 101.101.153.1 DNS request timed out. timeout was 2 seconds. Can't find server name for address 101.101.153.1: Timed out Server: UnKnown Address: 101.101.153.1 DNS request timed out. timeout was 2 seconds. DNS request timed out. timeout was 2 seconds. Request to UnKnown timed-out 这里我们可以看出twitter.com这个域名以经被DNS污染了\n4.DNS污染解决方案 VPN技术\n手动修改HOST文件\n这里着重讲一下这个方法，也是我常用的方法。先介绍一下HOST文件的作用\n加快域名解析：当你访问一个网址时，系统会首先检查hosts文件中的条目，如果找到对应的IP地址，则直接使用该地址去连接目标服务器，而不通过DNS服务器进行查询，从而提高域名解析速度。\n本地化域名解析：在局域网环境下，可以为内部网络的设备配置hosts文件来实现快速、便捷的本地域名解析，例如将内部服务器的域名映射到其局域网IP地址。\n跳过特定DNS设置：对于某些需要绕过公共DNS或CDN（内容分发网络）以访问特定版本或测试环境的网站，可以通过修改hosts文件指定要连接的服务器IP。\n过滤或屏蔽网站：用户还可以利用hosts文件将不想访问或者可能有害的网站域名指向无效的IP地址，比如127.0.0.1（本地环回地址），以此达到拦截恶意网站、广告服务器等目的。\n测试与调试：开发人员经常用hosts文件临时重定向某个域名至本地开发环境的IP地址上，以便于测试Web应用或服务。\n当客户端需要访问一个目标网站时，会先在本地的HOST文件里先查询有没有相关的记录，如果有则不必通过DNS服务器解析。这样的设计本意是为了提高网站的访问速度和绕过恶意网站，而我们则可以通过提前设好HOST文件内的内容，从而避免收到“毒苹果”。\nHOST文件位于C:\\windows\\System32\\drivers\\etc中，这是我的HOST文件内容\n140.82.113.4 github.com 140.82.113.4 gist.github.com 140.82.114.10 nodeload.github.com 199.232.69.194 github.global.ssl.fastly.net P.S这里可能会遇到一些修改host文件的困难，只需要将host文件复制到桌面，然后修改桌面文件最后替换etc文件下的host文件\n5.常用工具 IP地址查询网站：https://www.ipaddress.com/ip-lookup\n绘 图 工 具： https://app.diagrams.net/\n引用 DNS的解析，查询，调度原理是什么？什么是DNS劫持，污染？如何监控？_监测dns劫持的手段-CSDN博客 DNS污染（国内的服务器(非DNS)） - TrustNature - 博客园 (cnblogs.com) 通过开源程序同时解决DNS劫持和DNS污染的问题-月光博客 (williamlong.info) ",
+  "wordCount" : "2498",
+  "inLanguage": "zh",
+  "datePublished": "2024-02-02T19:55:23+08:00",
+  "dateModified": "2024-02-02T19:55:23+08:00",
+  "author":[{
+    "@type": "Person",
+    "name": "realMarkYang"
+  }],
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://realmarkyang.github.io/posts/tech/dns%E6%B1%A1%E6%9F%93/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "✪ Mark Yang",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://realmarkyang.github.io/img/Q.jpg"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    (function () {
+        let  arr,reg = new RegExp("(^| )"+"change-themes"+"=([^;]*)(;|$)");
+        if(arr = document.cookie.match(reg)) {
+        } else {
+            if (new Date().getHours() >= 19 || new Date().getHours() < 6) {
+                document.body.classList.add('dark');
+                localStorage.setItem("pref-theme", 'dark');
+            } else {
+                document.body.classList.remove('dark');
+                localStorage.setItem("pref-theme", 'light');
+            }
+        }
+    })()
+
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://realmarkyang.github.io/" accesskey="h" title="Blog (Alt + H)">Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://realmarkyang.github.io/search" title="🔍 搜索 (Alt &#43; /)" accesskey=/>
+                <span>🔍 搜索</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://realmarkyang.github.io/" title="🏠 主页">
+                <span>🏠 主页</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://realmarkyang.github.io/posts" title="📚 文章">
+                <span>📚 文章</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://realmarkyang.github.io/tags" title="🧩 标签">
+                <span>🧩 标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://realmarkyang.github.io/archives/" title="⏱️ 时间轴">
+                <span>⏱️ 时间轴</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://realmarkyang.github.io/about" title="🙋🏻‍♂️ 关于">
+                <span>🙋🏻‍♂️ 关于</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://realmarkyang.github.io/links" title="🤝 友链">
+                <span>🤝 友链</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main page">
+<style>
+    i[id*="post_meta_style"] {
+        display: flex;
+        align-items: center;
+        margin: 0 0 10px 0;
+    }
+</style>
+
+<article class="post-single">
+    <div id="single-content">
+        <header class="post-header">
+            <div class="breadcrumbs"><a href="https://realmarkyang.github.io/">🏠 主页</a>&nbsp;»&nbsp;<a href="https://realmarkyang.github.io/posts/">📚文章</a>&nbsp;»&nbsp;<a href="https://realmarkyang.github.io/posts/tech/">👨🏻‍💻 技术</a></div>
+            <h1 class="post-title">
+                DNS污染
+            </h1>
+            <div class="post-description">
+                DNS污染的原理和解决办法
+            </div>
+            <div class="post-meta">
+
+<style>
+    i[id*="post_meta_style"] {
+        display: flex;
+        align-items: center;
+        margin: 0 0 10px 0;
+    }
+
+    .parent-post-meta {
+        display: flex;
+        flex-wrap: wrap;
+        opacity: 0.8;
+    }
+</style>
+
+<span class="parent-post-meta">
+    <span id="post_meta_style_1">
+        <span class="fa fa-calendar-check-o"></span>
+        <span>2024-02-02
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    
+    
+    
+    
+    
+    
+    
+    <span id="post_meta_style_3">
+        <span class="fa fa-file-word-o"></span>
+        <span>2498字
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    <span id="post_meta_style_4">
+        <span class="fa fa-clock-o"></span>
+        <span>5分钟
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    <span id="post_meta_style_5">
+        <span class="fa fa-user-o"></span>
+        <span>realMarkYang
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    <span id="post_meta_style_6">
+        <span class="fa fa-tags" style="opacity: 0.8"></span>
+        <span>
+            <span class="post-tags-meta">
+                <a href="https://realmarkyang.github.io/tags/dns/" style="color: var(--secondary)!important;">DNS</a>
+                &nbsp;<a href="https://realmarkyang.github.io/tags/tech/" style="color: var(--secondary)!important;">tech</a>
+            </span>
+        </span>
+    </span>
+</span>
+<span style="opacity: 0.8;">
+                    <span id="post_meta_style_7">
+                        &nbsp;&nbsp;
+
+                    </span>
+                    <span id="post_meta_style_8">
+                        
+
+                        </span>
+                    </span>
+                </span>
+
+</div>
+        </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">目录</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#dns%e6%b1%a1%e6%9f%93" aria-label="DNS污染">DNS污染</a><ul>
+                        
+                <li>
+                    <a href="#1dns%e6%b1%a1%e6%9f%93%e7%9a%84%e5%ae%9a%e4%b9%89" aria-label="1.DNS污染的定义">1.DNS污染的定义</a></li>
+                <li>
+                    <a href="#2dns%e6%b1%a1%e6%9f%93%e7%9a%84%e5%8e%9f%e7%90%86" aria-label="2.DNS污染的原理">2.DNS污染的原理</a></li>
+                <li>
+                    <a href="#3%e6%a3%80%e6%b5%8bdns%e6%b1%a1%e6%9f%93" aria-label="3.检测DNS污染">3.检测DNS污染</a></li>
+                <li>
+                    <a href="#4dns%e6%b1%a1%e6%9f%93%e8%a7%a3%e5%86%b3%e6%96%b9%e6%a1%88" aria-label="4.DNS污染解决方案">4.DNS污染解决方案</a></li>
+                <li>
+                    <a href="#5%e5%b8%b8%e7%94%a8%e5%b7%a5%e5%85%b7" aria-label="5.常用工具">5.常用工具</a></li>
+                <li>
+                    <a href="#%e5%bc%95%e7%94%a8" aria-label="引用">引用</a>
+                </li>
+            </ul>
+            </li>
+            </ul>
+        </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+        
+        activeElement = elements[0];
+        const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+        document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+    }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        if (elements) {
+            activeElement = Array.from(elements).find((element) => {
+                if ((getOffsetTop(element) - window.pageYOffset) > 0 &&
+                    (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                    return element;
+                }
+            }) || activeElement
+
+            elements.forEach(element => {
+                const id = encodeURI(element.getAttribute('id')).toLowerCase();
+                if (element === activeElement){
+                    document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+                } else {
+                    document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+                }
+            })
+        }
+    }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;
+    }
+</script>
+        <div class="post-content"><h3 id="dns污染">DNS污染<a hidden class="anchor" aria-hidden="true" href="#dns污染">#</a></h3>
+<blockquote>
+<p>今天按照惯例在查看Github上自己的仓库时，突然显示连接超时，随掏出手机发现手机竟可以正常访问（电脑连的上移动宽带，手机则是电信的）。脑中瞬间闪出一个想法——莫非是DNS污染？于是遂即查阅资料，予以一篇浅显的博客录之</p>
+</blockquote>
+<h4 id="1dns污染的定义">1.DNS污染的定义<a hidden class="anchor" aria-hidden="true" href="#1dns污染的定义">#</a></h4>
+<p>DNS污染，又称为域名服务器缓存污染（DNScache pollution）或者域名服务器快照侵害（DNS cache poisoning）。DNS污染是指一些刻意制造或无意中制造出来的域名服务器分组，把域名指往不正确的IP地址。一般来说，网站在互联网上一般都有可信赖的域名服务器，但为减免网络上的交通，一般的域名都会把外间的域名服务器数据暂存起来，待下次有其他机器要求解析域名时，可以立即提供服务。一旦有相关网域的局域域名服务器的缓存受到污染，就会把网域内的电脑导引往错误的服务器或服务器的网址。其实总结起来用大白话说就是，通过DNS污染导致客户端收到错误的IP地址，从而无法正常访问目标网站。</p>
+<h4 id="2dns污染的原理">2.DNS污染的原理<a hidden class="anchor" aria-hidden="true" href="#2dns污染的原理">#</a></h4>
+<p>首先我们来看一下电脑是如何访问目标网站的，如图1-DNS域名解析</p>
+<p><img loading="lazy" src="1.jpg" alt="1"  />
+</p>
+<p>​                                                                                                   图1-DNS域名解析</p>
+<ol>
+<li>
+<p>本地客户机提出域名解析请求，查找本地HOST文件后将该请求发送给本地的域名服务器。</p>
+</li>
+<li>
+<p>将请求发送给本地的域名服务器。</p>
+</li>
+<li>
+<p>当本地的域名服务器收到请求后，就先查询本地的缓存。</p>
+</li>
+<li>
+<p>如果有该纪录项，则本地的域名服务器就直接把查询的结果返回浏览器。</p>
+</li>
+</ol>
+<p><strong>5. 如果本地DNS缓存中没有该纪录，则本地域名服务器就直接把请求发给根域名服务器。</strong></p>
+<ol start="6">
+<li>
+<p>然后根域名服务器再返回给本地域名服务器一个所查询域（根的子域）的主域名服务器的地址。</p>
+</li>
+<li>
+<p>本地服务器再向上一步返回的域名服务器发送请求，然后接受请求的服务器查询自己的缓存，如果没有该纪录，则返回相关的下级的域名服务器的地址。</p>
+</li>
+<li>
+<p>重复第7步，直到找到正确的纪录。</p>
+</li>
+<li>
+<p>本地域名服务器把返回的结果保存到缓存，以备下一次使用，同时还将结果返回给客户机</p>
+</li>
+</ol>
+<p>而DNS污染则是在第五步产生的，我们举一个浅显的例子</p>
+<p>假设A为用户端，B为DNS服务器，C为A到B链路的一个节点的网络设备（路由器，交换机，网关等等）。然后我们来模拟一次被污染的DNS请求过程。A向B构建UDP连接，然后，A向B发送查询请求，查询请求内容通常是：“github.com”，这一个数据包经过节点设备C继续前往DNS服务器B；然而在这个过程中，C通过对数据包进行特征分析（远程通讯端口为DNS服务器端口，激发内容关键字检查，检查特定的域名如上述的“github.com&quot;,以及查询的记录类型&quot;A记录&quot;），从而立刻返回一个错误的解析结果（如返回了&quot;A 123.123.123.123&quot;），众所周知，作为链路上的一个节点，C机器的这个结果必定会先于真正的域名服务器的返回结果到达用户机器A(很多被污染的目标网站服务器都位于国外)，而目前我们的DNS解析机制有一个重要的原则，就是<strong>只认第一</strong>，因此C节点所返回的查询结果就被A机器当作了最终返回结果，用于构建链接。如图2-DNS污染原理。</p>
+<p><img loading="lazy" src="2.jpg" alt="2"  />
+</p>
+<p>​                                            图2-DNS污染原理</p>
+<h4 id="3检测dns污染">3.检测DNS污染<a hidden class="anchor" aria-hidden="true" href="#3检测dns污染">#</a></h4>
+<p>由于DNS污染会返回一个虚假的IP地址，而当我们访问一个根本不存在的域名时，如果正常来说肯定不会有任何回答，然而当在域名被DNS污染后则会返回一个虚假的IP地址。这样我们就进行了一个简单的DNS污染检测。下面我将以一个简单的实验进行说明，为了方便理解，我先介绍一下用到的命令。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cmd" data-lang="cmd"><span style="display:flex;"><span>nslookup#查询 DNS（域名系统）记录以解析 Internet 中的域名到相应的 IP 地址
+</span></span><span style="display:flex;"><span>ipconfig /flushdns#刷新DNS解析缓存
+</span></span></code></pre></div><p>我们先选取一个不存在的国外IP作为域名服务器进行解析，然后用nslookup进行网络诊断</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cmd" data-lang="cmd"><span style="display:flex;"><span>C:\<span style="color:#75715e">&gt;nslookup facebook.com 101.101.153.1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　DNS request timed out.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　timeout was 2 seconds.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　Can&#39;t find server name for address 101.101.153.1: Timed out
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　Server: UnKnown
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　Address: 101.101.153.1
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　Name: twitter.com
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　Address: 60.41.5.18
+</span></span></code></pre></div><p>接着我们选取一个可正常访问的域名进行网络诊断</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cmd" data-lang="cmd"><span style="display:flex;"><span>　　C:\&gt;nslookup www.baidu.com 101.101.153.1
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　DNS request timed out.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　timeout was 2 seconds.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　Can&#39;t find server name for address 101.101.153.1: Timed out
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　Server: UnKnown
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　Address: 101.101.153.1
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　DNS request timed out.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　timeout was 2 seconds.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　DNS request timed out.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　timeout was 2 seconds.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>　　Request to UnKnown timed-out
+</span></span></code></pre></div><p>这里我们可以看出twitter.com这个域名以经被DNS污染了</p>
+<h4 id="4dns污染解决方案">4.DNS污染解决方案<a hidden class="anchor" aria-hidden="true" href="#4dns污染解决方案">#</a></h4>
+<ul>
+<li>
+<p>VPN技术</p>
+</li>
+<li>
+<p>手动修改<strong>HOST</strong>文件</p>
+<p>这里着重讲一下这个方法，也是我常用的方法。先介绍一下HOST文件的作用</p>
+<ol>
+<li>
+<p>加快域名解析：当你访问一个网址时，系统会首先检查hosts文件中的条目，如果找到对应的IP地址，则直接使用该地址去连接目标服务器，而不通过DNS服务器进行查询，从而提高域名解析速度。</p>
+</li>
+<li>
+<p>本地化域名解析：在局域网环境下，可以为内部网络的设备配置hosts文件来实现快速、便捷的本地域名解析，例如将内部服务器的域名映射到其局域网IP地址。</p>
+</li>
+<li>
+<p>跳过特定DNS设置：对于某些需要绕过公共DNS或CDN（内容分发网络）以访问特定版本或测试环境的网站，可以通过修改hosts文件指定要连接的服务器IP。</p>
+</li>
+<li>
+<p>过滤或屏蔽网站：用户还可以利用hosts文件将不想访问或者可能有害的网站域名指向无效的IP地址，比如127.0.0.1（本地环回地址），以此达到拦截恶意网站、广告服务器等目的。</p>
+</li>
+<li>
+<p>测试与调试：开发人员经常用hosts文件临时重定向某个域名至本地开发环境的IP地址上，以便于测试Web应用或服务。</p>
+</li>
+</ol>
+</li>
+</ul>
+<p>当客户端需要访问一个目标网站时，会先在本地的HOST文件里先查询有没有相关的记录，如果有则不必通过DNS服务器解析。这样的设计本意是为了提高网站的访问速度和绕过恶意网站，而我们则可以通过提前设好HOST文件内的内容，从而避免收到“毒苹果”。</p>
+<p>HOST文件位于C:\windows\System32\drivers\etc中，这是我的HOST文件内容</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-gdscript3" data-lang="gdscript3"><span style="display:flex;"><span><span style="color:#ae81ff">140.82</span><span style="color:#f92672">.</span><span style="color:#ae81ff">113.4</span> github<span style="color:#f92672">.</span>com
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">140.82</span><span style="color:#f92672">.</span><span style="color:#ae81ff">113.4</span>  gist<span style="color:#f92672">.</span>github<span style="color:#f92672">.</span>com
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">140.82</span><span style="color:#f92672">.</span><span style="color:#ae81ff">114.10</span> nodeload<span style="color:#f92672">.</span>github<span style="color:#f92672">.</span>com
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">199.232</span><span style="color:#f92672">.</span><span style="color:#ae81ff">69.194</span> github<span style="color:#f92672">.</span>global<span style="color:#f92672">.</span>ssl<span style="color:#f92672">.</span>fastly<span style="color:#f92672">.</span>net
+</span></span></code></pre></div><p>P.S这里可能会遇到一些修改host文件的困难，只需要将host文件复制到桌面，然后修改桌面文件最后替换etc文件下的host文件</p>
+<h4 id="5常用工具">5.常用工具<a hidden class="anchor" aria-hidden="true" href="#5常用工具">#</a></h4>
+<p>IP地址查询网站：https://www.ipaddress.com/ip-lookup</p>
+<p>绘    图   工   具： <a href="https://app.diagrams.net/">https://app.diagrams.net/</a></p>
+<h4 id="引用">引用<a hidden class="anchor" aria-hidden="true" href="#引用">#</a></h4>
+<blockquote>
+<ul>
+<li><a href="https://blog.csdn.net/DeveloperFire/article/details/128776725?ops_request_misc=%7B%22request%5Fid%22%3A%22170687075416800213031529%22%2C%22scm%22%3A%2220140713.130102334..%22%7D&amp;request_id=170687075416800213031529&amp;biz_id=0&amp;utm_medium=distribute.pc_search_result.none-task-blog-2~all~sobaiduend~default-1-128776725-null-null.142%5Ev99%5Epc_search_result_base5&amp;utm_term=DNS%E6%B1%A1%E6%9F%93%E5%8E%9F%E7%90%86&amp;spm=1018.2226.3001.4187">DNS的解析，查询，调度原理是什么？什么是DNS劫持，污染？如何监控？_监测dns劫持的手段-CSDN博客</a></li>
+<li><a href="https://www.cnblogs.com/trustnature/articles/3205620.html">DNS污染（国内的服务器(非DNS)） - TrustNature - 博客园 (cnblogs.com)</a></li>
+<li><a href="https://www.williamlong.info/archives/2184.html">通过开源程序同时解决DNS劫持和DNS污染的问题-月光博客 (williamlong.info)</a></li>
+</ul>
+</blockquote>
+
+
+        </div>
+
+       
+
+        <footer class="post-footer">
+            
+<nav class="paginav">
+  <a class="next" href="https://realmarkyang.github.io/posts/life/%E9%A2%84%E5%85%86/">
+    <span class="title">下一页 »</span>
+    <br>
+    <span>预兆</span>
+  </a>
+</nav>
+
+        </footer>
+    </div>
+</article>
+</main>
+
+<footer class="footer">
+    <span>
+        Copyright
+        &copy;
+        2023-2024 &nbsp&nbsp
+        <a href="https://realmarkyang.github.io/" style="color:#939393;">✪ Mark Yang</a>
+        
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <span class="topInner">
+        <svg class="topSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+            <path d="M12 6H0l6-6z"/>
+        </svg>
+        <span id="read_progress"></span>
+    </span>
+</a>
+
+<script>
+    document.addEventListener('scroll', function (e) {
+        const readProgress = document.getElementById("read_progress");
+        const scrollHeight = document.documentElement.scrollHeight;
+        const clientHeight = document.documentElement.clientHeight;
+        const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+        readProgress.innerText = ((scrollTop / (scrollHeight - clientHeight)).toFixed(2) * 100).toFixed(0);
+    })
+</script>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+</script>
+<script>
+    let mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        (function() {
+            document.cookie = "change-themes" + "="+ escape ("false");
+        })()
+
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    });
+</script>
+
+<script>
+    document.body.addEventListener('copy', function (e) {
+        if (window.getSelection().toString() && window.getSelection().toString().length > 50) {
+            let clipboardData = e.clipboardData || window.clipboardData;
+            if (clipboardData) {
+                e.preventDefault();
+                let htmlData = window.getSelection().toString() +
+                    '\r\n\n————————————————\r\n' +
+                    '版权声明：本文为「'+"✪ Mark Yang"+'」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。' +
+                '\r\n原文链接：' + location.href;
+                let textData = window.getSelection().toString() +
+                    '\r\n\n————————————————\r\n' +
+                    '版权声明：本文为「'+"✪ Mark Yang"+'」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。' +
+                '\r\n原文链接：' + location.href;
+                clipboardData.setData('text/html', htmlData);
+                clipboardData.setData('text/plain', textData);
+            }
+        }
+    });
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerText = '复制';
+
+        function copyingDone() {
+            copybutton.innerText = '已复制！';
+            setTimeout(() => {
+                copybutton.innerText = '复制';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                let text = codeblock.textContent +
+                    '\r\n————————————————\r\n' +
+                    '版权声明：本文为「'+"✪ Mark Yang"+'」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。' +
+                '\r\n原文链接：' + location.href;
+                navigator.clipboard.writeText(text);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) {}
+            selection.removeRange(range);
+        });
+
+        let language = codeblock.className.replaceAll("language-", "")
+        let macTool = document.createElement("div")
+        let macTool1 = document.createElement("div")
+        let macTool2 = document.createElement("div")
+        let macTool3 = document.createElement("div")
+        let languageType = document.createElement("div")
+        languageType.innerText = language
+        macTool.setAttribute('class', 'mac-tool')
+        macTool1.setAttribute('class', 'mac bb1')
+        macTool2.setAttribute('class', 'mac bb2')
+        macTool3.setAttribute('class', 'mac bb3')
+        languageType.setAttribute('class', 'language-type')
+        macTool.appendChild(macTool1)
+        macTool.appendChild(macTool2)
+        macTool.appendChild(macTool3)
+        macTool.appendChild(languageType)
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+            container.appendChild(macTool)
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+            container.appendChild(macTool)
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+            container.appendChild(macTool)
+        }
+    });
+</script>
+</body>
+
+</html>
