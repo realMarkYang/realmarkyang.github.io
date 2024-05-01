@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>blog on ✪ Mark Yang</title>
-    <link>https://realmarkyang.github.io/tags/blog/</link>
+    <link>https://realmarkyang.vercel.app/tags/blog/</link>
     <description>Recent content in blog on ✪ Mark Yang</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh</language>
-    <lastBuildDate>Thu, 05 May 2022 00:18:23 +0800</lastBuildDate><atom:link href="https://realmarkyang.github.io/tags/blog/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 05 May 2022 00:18:23 +0800</lastBuildDate><atom:link href="https://realmarkyang.vercel.app/tags/blog/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Blog</title>
-      <link>https://realmarkyang.github.io/posts/project/project/</link>
+      <link>https://realmarkyang.vercel.app/posts/project/project/</link>
       <pubDate>Thu, 05 May 2022 00:18:23 +0800</pubDate>
       
-      <guid>https://realmarkyang.github.io/posts/project/project/</guid>
+      <guid>https://realmarkyang.vercel.app/posts/project/project/</guid>
       <description></description>
     </item>
     

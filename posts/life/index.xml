@@ -2,26 +2,26 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>🏖 生活 on ✪ Mark Yang</title>
-    <link>https://realmarkyang.github.io/posts/life/</link>
+    <link>https://realmarkyang.vercel.app/posts/life/</link>
     <description>Recent content in 🏖 生活 on ✪ Mark Yang</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh</language>
-    <lastBuildDate>Thu, 01 Feb 2024 00:18:15 +0800</lastBuildDate><atom:link href="https://realmarkyang.github.io/posts/life/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 01 Feb 2024 00:18:15 +0800</lastBuildDate><atom:link href="https://realmarkyang.vercel.app/posts/life/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>预兆</title>
-      <link>https://realmarkyang.github.io/posts/life/%E9%A2%84%E5%85%86/</link>
+      <link>https://realmarkyang.vercel.app/posts/life/%E9%A2%84%E5%85%86/</link>
       <pubDate>Thu, 01 Feb 2024 00:18:15 +0800</pubDate>
       
-      <guid>https://realmarkyang.github.io/posts/life/%E9%A2%84%E5%85%86/</guid>
+      <guid>https://realmarkyang.vercel.app/posts/life/%E9%A2%84%E5%85%86/</guid>
       <description>我心上有一朵花在生长 越是珍惜 孤独感就越发地膨胀 只要在脑海中勾勒出你的模样 万物便止不住喧嚣 我已不会再轻易悲伤 我已不会再作无意义的回想 我已不会再进行任何抵抗 风还在响 每当我尝试遗忘 痛苦就充斥心房 像某种信号 强迫我起身寻找 星星掉落的数量 候鸟离去的方向 潮水撤退的形状 都像是 有关于你的预兆 花开好</description>
     </item>
     
     <item>
       <title>杂想</title>
-      <link>https://realmarkyang.github.io/posts/life/%E6%9D%82%E6%83%B3/</link>
+      <link>https://realmarkyang.vercel.app/posts/life/%E6%9D%82%E6%83%B3/</link>
       <pubDate>Thu, 01 Feb 2024 00:18:15 +0800</pubDate>
       
-      <guid>https://realmarkyang.github.io/posts/life/%E6%9D%82%E6%83%B3/</guid>
+      <guid>https://realmarkyang.vercel.app/posts/life/%E6%9D%82%E6%83%B3/</guid>
       <description>&lt;p&gt;&lt;img loading=&#34;lazy&#34; src=&#34;1.png&#34; alt=&#34;紫罗兰永恒花园&#34;  /&gt;
 &lt;/p&gt;
 &lt;p&gt;近些年来总觉得悲伤莫名的来袭，偶偶想起鲁迅先生，初中时常常拜读鲁迅先生的书籍，自己的行为和性格也潜移默化的受到了先生的影响。近些来有些悲观的想法，思考再三觉得还是写下来为妙。&lt;/p&gt;
@@ -34,10 +34,19 @@
     
     <item>
       <title>TestImage</title>
-      <link>https://realmarkyang.github.io/posts/life/testimage/</link>
+      <link>https://realmarkyang.vercel.app/posts/life/testimage/</link>
       <pubDate>Wed, 31 Jan 2024 00:18:15 +0800</pubDate>
       
-      <guid>https://realmarkyang.github.io/posts/life/testimage/</guid>
+      <guid>https://realmarkyang.vercel.app/posts/life/testimage/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Life</title>
+      <link>https://realmarkyang.vercel.app/posts/life/life/</link>
+      <pubDate>Thu, 05 May 2022 00:18:15 +0800</pubDate>
+      
+      <guid>https://realmarkyang.vercel.app/posts/life/life/</guid>
       <description></description>
     </item>
     
